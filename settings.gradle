@@ -1,0 +1,2 @@
+include ':app', ':YBChatSDK'
+rootProject.name='ChatDemo'
