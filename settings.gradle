@@ -1,2 +1,2 @@
-include ':app', ':YBChatSDK'
+include ':app', ':YBChatSDK', ':YBChatLib'
 rootProject.name='ChatDemo'

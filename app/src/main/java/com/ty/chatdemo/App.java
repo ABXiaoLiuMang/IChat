@@ -2,8 +2,7 @@ package com.ty.chatdemo;
 
 import android.app.Application;
 
-import com.ty.chat.ChatSdk;
-import com.ty.chatdemo.api.Api;
+
 import com.ty.chatdemo.util.HttpSignUtils;
 import com.ty.constant.LibApplication;
 import com.ty.net.NetSdk;
@@ -17,13 +16,13 @@ public class App extends Application {
         LogUtils.isDebug(true);
         initNetSdk();
 
-        ChatSdk.config(this)
-                .port(Api.port)
-                .host(Api.host)
-                .setUserId(Api.userId)
-                .setAppKey(Api.appKey)
-                .setSource(Api.source)
-                .initSDK();
+//        ChatSdk.config(this)
+//                .port(Api.port)
+//                .host(Api.host)
+//                .setUserId(Api.userId)
+//                .setAppKey(Api.appKey)
+//                .setSource(Api.source)
+//                .initSDK();
     }
 
     private void initNetSdk() {
