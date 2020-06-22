@@ -1,2 +1,2 @@
-include ':app', ':YBChatSDK', ':YBChatLib'
+include ':app', ':YBChatSDK', ':YBChatLib', ':myapplication', ':wsmanager'
 rootProject.name='ChatDemo'

@@ -1,0 +1,256 @@
+package com.ty.myapplication;
+
+import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.content.ContextCompat;
+import androidx.core.view.ScrollingView;
+import androidx.lifecycle.ViewModelProvider;
+
+import android.content.Context;
+import android.content.Intent;
+import android.net.Uri;
+import android.os.Bundle;
+import android.text.Html;
+import android.text.Spanned;
+import android.text.TextUtils;
+import android.text.format.DateUtils;
+import android.text.style.ForegroundColorSpan;
+import android.util.Log;
+import android.view.Menu;
+import android.view.MenuItem;
+import android.view.View;
+import android.view.inputmethod.InputMethodManager;
+import android.widget.Button;
+import android.widget.EditText;
+import android.widget.TextView;
+import android.widget.Toast;
+
+import com.rabtman.wsmanager.WsManager;
+import com.rabtman.wsmanager.listener.WsStatusListener;
+import com.ty.chatlib.protocol.Command;
+import com.ty.chatlib.protocol.KfHeartbeat;
+import com.ty.chatlib.protocol.KfMessage;
+import com.ty.myapplication.api.Api;
+import com.ty.myapplication.api.BaseEntity;
+import com.ty.myapplication.viewmodel.MainViewModel;
+import com.ty.net.callback.NetObserver;
+import com.ty.utils.LogUtils;
+import com.ty.utils.ResUtils;
+import com.ty.utils.StringUtils;
+
+import java.util.concurrent.TimeUnit;
+
+import okhttp3.OkHttpClient;
+import okhttp3.Response;
+import okio.ByteString;
+
+public class WebMainActivity extends AppCompatActivity {
+
+    private final static String TAG = "WebMainActivity";
+    private WsManager wsManager;
+    private TextView btn_send, btn_clear, tv_content;
+    private Button btn_connect, btn_disconnect,btn_request;
+    private EditText edit_url, edit_content;
+    MainViewModel mainViewModel;
+    int id,ack;
+    private WsStatusListener wsStatusListener = new WsStatusListener() {
+        @Override
+        public void onOpen(Response response) {
+            LogUtils.d( "WsManager-----onOpen");
+            tv_content.append(Spanny.spanText("服务器连接成功\n\n", new ForegroundColorSpan(
+                    ContextCompat.getColor(getBaseContext(), R.color.colorPrimary))));
+            btn_send.performClick();
+        }
+
+        @Override
+        public void onMessage(String text) {
+            LogUtils.d( "WsManager-----onMessage");
+            tv_content.append(Spanny
+                    .spanText("服务器 " + DateUtils.formatDateTime(getBaseContext(), System.currentTimeMillis(),
+                            DateUtils.FORMAT_SHOW_TIME) + "\n",
+                            new ForegroundColorSpan(
+                                    ContextCompat.getColor(getBaseContext(), R.color.colorPrimary))));
+            tv_content.append(fromHtmlText(text) + "\n\n");
+        }
+
+        @Override
+        public void onMessage(ByteString bytes) {
+            LogUtils.d( "WsManager-----onMessage" + new String(bytes.toByteArray()));
+        }
+
+        @Override
+        public void onReconnect() {
+            LogUtils.d( "WsManager-----onReconnect");
+            tv_content.append(Spanny.spanText("服务器重连接中...\n", new ForegroundColorSpan(
+                    ContextCompat.getColor(getBaseContext(), android.R.color.holo_red_light))));
+        }
+
+        @Override
+        public void onClosing(int code, String reason) {
+            LogUtils.d( "WsManager-----onClosing");
+            tv_content.append(Spanny.spanText("服务器连接关闭中...\n", new ForegroundColorSpan(
+                    ContextCompat.getColor(getBaseContext(), android.R.color.holo_red_light))));
+        }
+
+        @Override
+        public void onClosed(int code, String reason) {
+            LogUtils.d( "WsManager-----onClosed");
+            tv_content.append(Spanny.spanText("服务器连接已关闭\n", new ForegroundColorSpan(
+                    ContextCompat.getColor(getBaseContext(), android.R.color.holo_red_light))));
+        }
+
+        @Override
+        public void onFailure(Throwable t, Response response) {
+            LogUtils.d( "WsManager-----onFailure");
+            tv_content.append(Spanny.spanText("服务器连接失败\n", new ForegroundColorSpan(
+                    ContextCompat.getColor(getBaseContext(), android.R.color.holo_red_light))));
+        }
+    };
+
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_web_main);
+
+        mainViewModel = new ViewModelProvider(this).get(MainViewModel.class);
+        mainViewModel.signLiveData.observe(this,new NetObserver<BaseEntity<String>>(){
+
+            @Override
+            protected void onSuccess(BaseEntity<String> baseEntity) {
+                edit_url.setText(StringUtils.getFormatString(Api.url,baseEntity.getData()));
+                btn_connect.performClick();
+            }
+
+            @Override
+            protected void onError(int code, String errMsg) {
+
+            }
+        });
+
+
+
+        btn_send = (TextView) findViewById(R.id.btn_send);
+        btn_clear = (TextView) findViewById(R.id.btn_clear);
+        tv_content = (TextView) findViewById(R.id.tv_content);
+        btn_connect = (Button) findViewById(R.id.btn_connect);
+        btn_disconnect = (Button) findViewById(R.id.btn_disconnect);
+        btn_request = (Button) findViewById(R.id.btn_request);
+        edit_url = (EditText) findViewById(R.id.edit_url);
+        edit_content = (EditText) findViewById(R.id.edit_content);
+        btn_connect.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                String url = edit_url.getText().toString();
+                if (!TextUtils.isEmpty(url) && url.contains("ws")) {
+                    if (wsManager != null) {
+                        wsManager.stopConnect();
+                        wsManager = null;
+                    }
+                    wsManager = new WsManager.Builder(getBaseContext())
+                            .client(
+                                    new OkHttpClient().newBuilder()
+                                            .pingInterval(15, TimeUnit.SECONDS)
+                                            .retryOnConnectionFailure(true)
+                                            .build())
+                            .needReconnect(false)
+                            .wsUrl(url)
+                            .build();
+                    wsManager.setWsStatusListener(wsStatusListener);
+                    wsManager.startConnect();
+                } else {
+                    Toast.makeText(getBaseContext(), "请填写需要链接的地址", Toast.LENGTH_SHORT).show();
+                }
+            }
+        });
+
+        btn_disconnect.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                if (wsManager != null) {
+                    wsManager.stopConnect();
+                    wsManager = null;
+                }
+            }
+        });
+
+        btn_send.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+
+                KfHeartbeat kfHeartbeat = KfHeartbeat.newBuilder().setId(id++).setAck(ack++).build();
+                KfMessage kfMessage = KfMessage.newBuilder().setCmd(Command.COMMAND_HEARTBEAT_REQ).setKfHeartbeat(kfHeartbeat).build();
+
+                if (wsManager != null && wsManager.isWsConnected()) {
+                    boolean isSend = wsManager.sendMessage(ByteString.of(kfMessage.toByteArray()));
+                    if (isSend) {
+                        LogUtils.d("发送成功：" + kfMessage.toString());
+                        tv_content.setText("发送成功");
+                    } else {
+                        LogUtils.d("发送失败：" + kfMessage.toString());
+                        tv_content.setText("发送失败");
+                    }
+                } else {
+                    Toast.makeText(getBaseContext(), "请先连接服务器", Toast.LENGTH_SHORT).show();
+                }
+            }
+        });
+
+        btn_clear.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                tv_content.setText("");
+            }
+        });
+
+        btn_request.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                mainViewModel.getSig();
+            }
+        });
+    }
+
+    @Override
+    protected void onDestroy() {
+        if (wsManager != null) {
+            wsManager.stopConnect();
+            wsManager = null;
+        }
+        super.onDestroy();
+    }
+
+    @Override
+    public boolean onCreateOptionsMenu(Menu menu) {
+        getMenuInflater().inflate(R.menu.menu_main, menu);
+        return true;
+    }
+
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+        switch (item.getItemId()) {
+            case R.id.menu_source:
+                //调起浏览器更新app
+                Intent intent = new Intent();
+                intent.setAction("android.intent.action.VIEW");
+                Uri url = Uri.parse("https://github.com/Rabtman/WsManager");
+                intent.setData(url);
+                startActivity(intent);
+                break;
+        }
+        return super.onOptionsItemSelected(item);
+    }
+
+    private Spanned fromHtmlText(String s) {
+        Spanned result;
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.N) {
+            result = Html.fromHtml(s, Html.FROM_HTML_MODE_LEGACY);
+        } else {
+            result = Html.fromHtml(s);
+        }
+        return result;
+    }
+
+    private void showOrHideInputMethod() {
+        InputMethodManager imm = (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
+        imm.toggleSoftInput(0, InputMethodManager.HIDE_NOT_ALWAYS);
+    }
+}
