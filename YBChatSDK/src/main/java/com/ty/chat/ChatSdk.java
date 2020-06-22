@@ -8,6 +8,8 @@ import com.ty.chat.client.IChatClient;
 
 public class ChatSdk {
 
+  public static String url = "";
+
     private static IChatConfig config;
 
     public static IChatConfig config(Application application) {

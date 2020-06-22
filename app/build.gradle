@@ -41,7 +41,8 @@ dependencies {
 
     implementation 'com.google.protobuf:protobuf-java:3.9.0'
     implementation group: 'io.netty', name: 'netty-all', version: '4.1.28.Final'
-    implementation project(path: ':YBChatLib')
+//    implementation project(path: ':YBChatLib')
+    implementation project(path: ':YBChatSDK')
 
 
 }

@@ -1,8 +1,6 @@
 package com.ty.chat.client;
 
 
-import com.ty.chat.protocol.KfMessage;
-
 public interface IChatClient {
 
     int DISCONNECTION = 0;

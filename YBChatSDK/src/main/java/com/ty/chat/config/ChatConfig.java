@@ -6,6 +6,7 @@ import com.ty.chat.ChatSdk;
 import com.ty.chat.client.ChatClient;
 import com.ty.chat.client.IChatClient;
 import com.ty.chat.client.IChatFactory;
+import com.ty.chat.client.WebChatClient;
 
 public final class ChatConfig implements IChatConfig{
 
@@ -37,7 +38,8 @@ public final class ChatConfig implements IChatConfig{
 
     @Override
     public void initSDK() {
-        client = new ChatClient(this);
+//        client = new ChatClient(this);
+        client = new WebChatClient(this);
     }
 
     @Override
