@@ -26,9 +26,14 @@ import android.widget.Toast;
 
 import com.rabtman.wsmanager.WsManager;
 import com.rabtman.wsmanager.listener.WsStatusListener;
+import com.ty.chatlib.protocol.Command;
+import com.ty.chatlib.protocol.KfHeartbeat;
+import com.ty.chatlib.protocol.KfMessage;
+import com.ty.myapplication.api.Api;
 import com.ty.myapplication.api.BaseEntity;
 import com.ty.myapplication.viewmodel.MainViewModel;
 import com.ty.net.callback.NetObserver;
+import com.ty.utils.LogUtils;
 import com.ty.utils.ResUtils;
 import com.ty.utils.StringUtils;
 
@@ -45,19 +50,20 @@ public class WebMainActivity extends AppCompatActivity {
     private TextView btn_send, btn_clear, tv_content;
     private Button btn_connect, btn_disconnect,btn_request;
     private EditText edit_url, edit_content;
-    private ScrollingView scrollingView;
     MainViewModel mainViewModel;
+    int id,ack;
     private WsStatusListener wsStatusListener = new WsStatusListener() {
         @Override
         public void onOpen(Response response) {
-            Log.d(TAG, "WsManager-----onOpen");
+            LogUtils.d( "WsManager-----onOpen");
             tv_content.append(Spanny.spanText("服务器连接成功\n\n", new ForegroundColorSpan(
                     ContextCompat.getColor(getBaseContext(), R.color.colorPrimary))));
+            btn_send.performClick();
         }
 
         @Override
         public void onMessage(String text) {
-            Log.d(TAG, "WsManager-----onMessage");
+            LogUtils.d( "WsManager-----onMessage");
             tv_content.append(Spanny
                     .spanText("服务器 " + DateUtils.formatDateTime(getBaseContext(), System.currentTimeMillis(),
                             DateUtils.FORMAT_SHOW_TIME) + "\n",
@@ -68,33 +74,33 @@ public class WebMainActivity extends AppCompatActivity {
 
         @Override
         public void onMessage(ByteString bytes) {
-            Log.d(TAG, "WsManager-----onMessage");
+            LogUtils.d( "WsManager-----onMessage" + new String(bytes.toByteArray()));
         }
 
         @Override
         public void onReconnect() {
-            Log.d(TAG, "WsManager-----onReconnect");
+            LogUtils.d( "WsManager-----onReconnect");
             tv_content.append(Spanny.spanText("服务器重连接中...\n", new ForegroundColorSpan(
                     ContextCompat.getColor(getBaseContext(), android.R.color.holo_red_light))));
         }
 
         @Override
         public void onClosing(int code, String reason) {
-            Log.d(TAG, "WsManager-----onClosing");
+            LogUtils.d( "WsManager-----onClosing");
             tv_content.append(Spanny.spanText("服务器连接关闭中...\n", new ForegroundColorSpan(
                     ContextCompat.getColor(getBaseContext(), android.R.color.holo_red_light))));
         }
 
         @Override
         public void onClosed(int code, String reason) {
-            Log.d(TAG, "WsManager-----onClosed");
+            LogUtils.d( "WsManager-----onClosed");
             tv_content.append(Spanny.spanText("服务器连接已关闭\n", new ForegroundColorSpan(
                     ContextCompat.getColor(getBaseContext(), android.R.color.holo_red_light))));
         }
 
         @Override
         public void onFailure(Throwable t, Response response) {
-            Log.d(TAG, "WsManager-----onFailure");
+            LogUtils.d( "WsManager-----onFailure");
             tv_content.append(Spanny.spanText("服务器连接失败\n", new ForegroundColorSpan(
                     ContextCompat.getColor(getBaseContext(), android.R.color.holo_red_light))));
         }
@@ -110,7 +116,8 @@ public class WebMainActivity extends AppCompatActivity {
 
             @Override
             protected void onSuccess(BaseEntity<String> baseEntity) {
-                edit_url.setText(StringUtils.getFormatString(ResUtils.getString(R.string.app_url),baseEntity.getData()));
+                edit_url.setText(StringUtils.getFormatString(Api.url,baseEntity.getData()));
+                btn_connect.performClick();
             }
 
             @Override
@@ -144,7 +151,7 @@ public class WebMainActivity extends AppCompatActivity {
                                             .pingInterval(15, TimeUnit.SECONDS)
                                             .retryOnConnectionFailure(true)
                                             .build())
-                            .needReconnect(true)
+                            .needReconnect(false)
                             .wsUrl(url)
                             .build();
                     wsManager.setWsStatusListener(wsStatusListener);
@@ -168,27 +175,21 @@ public class WebMainActivity extends AppCompatActivity {
         btn_send.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                String content = edit_content.getText().toString();
-                if (!TextUtils.isEmpty(content)) {
-                    if (wsManager != null && wsManager.isWsConnected()) {
-                        boolean isSend = wsManager.sendMessage(content);
-                        if (isSend) {
-                            tv_content.append(Spanny.spanText(
-                                    "我 " + DateUtils.formatDateTime(getBaseContext(), System.currentTimeMillis(),
-                                            DateUtils.FORMAT_SHOW_TIME) + "\n", new ForegroundColorSpan(
-                                            ContextCompat.getColor(getBaseContext(), android.R.color.holo_green_light))));
-                            tv_content.append(content + "\n\n");
-                        } else {
-                            tv_content.append(Spanny.spanText("消息发送失败\n", new ForegroundColorSpan(
-                                    ContextCompat.getColor(getBaseContext(), android.R.color.holo_red_light))));
-                        }
-                        showOrHideInputMethod();
-                        edit_content.setText("");
+
+                KfHeartbeat kfHeartbeat = KfHeartbeat.newBuilder().setId(id++).setAck(ack++).build();
+                KfMessage kfMessage = KfMessage.newBuilder().setCmd(Command.COMMAND_HEARTBEAT_REQ).setKfHeartbeat(kfHeartbeat).build();
+
+                if (wsManager != null && wsManager.isWsConnected()) {
+                    boolean isSend = wsManager.sendMessage(ByteString.of(kfMessage.toByteArray()));
+                    if (isSend) {
+                        LogUtils.d("发送成功：" + kfMessage.toString());
+                        tv_content.setText("发送成功");
                     } else {
-                        Toast.makeText(getBaseContext(), "请先连接服务器", Toast.LENGTH_SHORT).show();
+                        LogUtils.d("发送失败：" + kfMessage.toString());
+                        tv_content.setText("发送失败");
                     }
                 } else {
-                    Toast.makeText(getBaseContext(), "请填写需要发送的内容", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(getBaseContext(), "请先连接服务器", Toast.LENGTH_SHORT).show();
                 }
             }
         });

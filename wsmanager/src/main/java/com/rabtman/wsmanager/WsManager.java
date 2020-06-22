@@ -5,9 +5,9 @@ import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
 import android.os.Handler;
 import android.os.Looper;
-import android.util.Log;
 
 import com.rabtman.wsmanager.listener.WsStatusListener;
+import com.ty.utils.LogUtils;
 
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.Lock;
@@ -54,7 +54,7 @@ public class WsManager implements IWsManager {
     @Override
     public void onOpen(WebSocket webSocket, final Response response) {
         //连接成功
-      Log.d("Dream","onOpen 53:" + Thread.currentThread().getName());
+      LogUtils.d("onOpen 53:" + Thread.currentThread().getName());
       mWebSocket = webSocket;
       setCurrentStatus(WsStatus.CONNECTED);
       connected();
@@ -75,7 +75,7 @@ public class WsManager implements IWsManager {
     @Override
     public void onMessage(WebSocket webSocket, final ByteString bytes) {
         //接收ByteString类型数据
-      Log.d("Dream","onMessage 73:" + Thread.currentThread().getName());
+      LogUtils.d("onMessage 73:" + Thread.currentThread().getName());
       if (wsStatusListener != null) {
         if (Looper.myLooper() != Looper.getMainLooper()) {
           wsMainHandler.post(new Runnable() {
@@ -93,7 +93,7 @@ public class WsManager implements IWsManager {
     @Override
     public void onMessage(WebSocket webSocket, final String text) {
         //接收string类型数据
-      Log.d("Dream","onMessage 90:" + Thread.currentThread().getName());
+      LogUtils.d("onMessage 90:" + Thread.currentThread().getName());
       if (wsStatusListener != null) {
         if (Looper.myLooper() != Looper.getMainLooper()) {
           wsMainHandler.post(new Runnable() {
@@ -112,7 +112,7 @@ public class WsManager implements IWsManager {
     public void onClosing(WebSocket webSocket, final int code, final String reason) {
         //连接关闭中
         //远程端暗示没有数据交互时回调（即此时准备关闭，但连接还没有关闭）
-      Log.d("Dream","onClosing 106:" + Thread.currentThread().getName());
+      LogUtils.d("onClosing 106:" + Thread.currentThread().getName());
       if (wsStatusListener != null) {
         if (Looper.myLooper() != Looper.getMainLooper()) {
           wsMainHandler.post(new Runnable() {
@@ -130,7 +130,7 @@ public class WsManager implements IWsManager {
     @Override
     public void onClosed(WebSocket webSocket, final int code, final String reason) {
         //连接已关闭
-      Log.d("Dream","onClosed 123:" + Thread.currentThread().getName());
+      LogUtils.d("onClosed 123:" + Thread.currentThread().getName());
       if (wsStatusListener != null) {
         if (Looper.myLooper() != Looper.getMainLooper()) {
           wsMainHandler.post(new Runnable() {
@@ -148,7 +148,7 @@ public class WsManager implements IWsManager {
     @Override
     public void onFailure(WebSocket webSocket, final Throwable t, final Response response) {
         //包括连接失败，发送失败等
-      Log.d("Dream","onFailure 140:" + Thread.currentThread().getName());
+      LogUtils.d("onFailure 140:" + Thread.currentThread().getName());
       tryReconnect();
       if (wsStatusListener != null) {
         if (Looper.myLooper() != Looper.getMainLooper()) {
@@ -311,7 +311,7 @@ public class WsManager implements IWsManager {
   }
 
   private boolean send(Object msg) {
-    Log.d("Dream","send 300:" + Thread.currentThread().getName());
+    LogUtils.d("send 300:" + Thread.currentThread().getName());
     boolean isSend = false;
     if (mWebSocket != null && mCurrentStatus == WsStatus.CONNECTED) {
       if (msg instanceof String) {
